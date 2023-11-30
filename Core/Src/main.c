@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "SERVO.h"
+#include "DCMOTOR.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,11 +32,18 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+// SERVO DEFINITIONS
 #define SERVO_PERIOD 1250;
 #define SERVO_MIN_DUTY_CICLE 0.05;
 #define SERVO_MAX_DUTY_CICLE 0.115;
 #define SERVO_CALIBRATION_GAIN 1.47;
 #define SERVO_CALIBRATION_OFFSET -12.6;
+
+// DCMOTOR DEFINITIONS
+#define DCMOTOR_PERIOD 1250;
+
+// FIRST STATE TIME
+#define FIRST_STATE_MS 10000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,6 +54,7 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart2;
@@ -62,8 +71,10 @@ static void MX_I2C1_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void servoConfigFactory(SERVO_Config_t *config);
+void dcMotorConfigFactory(DCMOTOR_Config_t *config);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -102,24 +113,37 @@ int main(void) {
 	MX_TIM4_Init();
 	//MX_USART2_UART_Init();
 	//MX_USART3_UART_Init();
+	MX_TIM3_Init();
 	/* USER CODE BEGIN 2 */
-
-	/* USER CODE END 2 */
-
 	SERVO_Config_t servoConfig;
 	servoConfigFactory(&servoConfig);
 
+	DCMOTOR_Config_t dcMotorConfig;
+	dcMotorConfigFactory(&dcMotorConfig);
+	/* USER CODE END 2 */
+
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
+	DCMOTOR_SetDirection(dcMotorConfig, FORWARD);
+
+	DCMOTOR_SetSpeedPercentage(dcMotorConfig, 100);
+	HAL_Delay(FIRST_STATE_MS);
 	while (1) {
 		/* USER CODE END WHILE */
-		SERVO_SetAngle(servoConfig, -90);
-		HAL_Delay(1000);
-		SERVO_SetAngle(servoConfig, 0);
-		HAL_Delay(1000);
-		SERVO_SetAngle(servoConfig, 90);
-		HAL_Delay(1000);
+
 		/* USER CODE BEGIN 3 */
+		SERVO_SetAngle(servoConfig, -90);
+		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 0);
+		HAL_Delay(5000);
+
+		//SERVO_SetAngle(servoConfig, 0);
+		//DCMOTOR_SetSpeedPercentage(dcMotorConfig, 50);
+		//HAL_Delay(5000);
+
+		SERVO_SetAngle(servoConfig, 90);
+		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 100);
+
+		HAL_Delay(5000);
 	}
 	/* USER CODE END 3 */
 }
@@ -191,6 +215,53 @@ static void MX_I2C1_Init(void) {
 	/* USER CODE BEGIN I2C1_Init 2 */
 
 	/* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+ * @brief TIM3 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM3_Init(void) {
+
+	/* USER CODE BEGIN TIM3_Init 0 */
+
+	/* USER CODE END TIM3_Init 0 */
+
+	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
+	TIM_OC_InitTypeDef sConfigOC = { 0 };
+
+	/* USER CODE BEGIN TIM3_Init 1 */
+
+	/* USER CODE END TIM3_Init 1 */
+	htim3.Instance = TIM3;
+	htim3.Init.Prescaler = 4 - 1;
+	htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim3.Init.Period = 1250;
+	htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	if (HAL_TIM_PWM_Init(&htim3) != HAL_OK) {
+		Error_Handler();
+	}
+	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig)
+			!= HAL_OK) {
+		Error_Handler();
+	}
+	sConfigOC.OCMode = TIM_OCMODE_PWM1;
+	sConfigOC.Pulse = 0;
+	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+	if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2)
+			!= HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN TIM3_Init 2 */
+
+	/* USER CODE END TIM3_Init 2 */
+	HAL_TIM_MspPostInit(&htim3);
 
 }
 
@@ -309,6 +380,7 @@ static void MX_USART3_UART_Init(void) {
  * @retval None
  */
 static void MX_GPIO_Init(void) {
+	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 	/* USER CODE BEGIN MX_GPIO_Init_1 */
 	/* USER CODE END MX_GPIO_Init_1 */
 
@@ -316,6 +388,27 @@ static void MX_GPIO_Init(void) {
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
+
+	/*Configure GPIO pin Output Level */
+	HAL_GPIO_WritePin(GPIOA, L293D_LATCH_Pin | L293D_EN_Pin | L293D_SER_Pin,
+			GPIO_PIN_RESET);
+
+	/*Configure GPIO pin Output Level */
+	HAL_GPIO_WritePin(L293D_CLK_GPIO_Port, L293D_CLK_Pin, GPIO_PIN_RESET);
+
+	/*Configure GPIO pins : L293D_LATCH_Pin L293D_EN_Pin L293D_SER_Pin */
+	GPIO_InitStruct.Pin = L293D_LATCH_Pin | L293D_EN_Pin | L293D_SER_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : L293D_CLK_Pin */
+	GPIO_InitStruct.Pin = L293D_CLK_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(L293D_CLK_GPIO_Port, &GPIO_InitStruct);
 
 	/* USER CODE BEGIN MX_GPIO_Init_2 */
 	/* USER CODE END MX_GPIO_Init_2 */
@@ -344,8 +437,26 @@ void servoConfigFactory(SERVO_Config_t *config) {
 	servoCalibration.gain = servoCalibrationGain;
 	servoCalibration.offset = servoOffset;
 
-	config->timerConfig= servoPWMConfig;
+	config->timerConfig = servoPWMConfig;
 	config->calibration = servoCalibration;
+}
+
+void dcMotorConfigFactory(DCMOTOR_Config_t* config) {
+	int dcMotorPeriod = DCMOTOR_PERIOD;
+	DCMOTOR_TimerConfig_t dcmotorTimerConfig;
+	dcmotorTimerConfig.channel = TIM_CHANNEL_2;
+	dcmotorTimerConfig.handle = htim3;
+	dcmotorTimerConfig.period = dcMotorPeriod;
+
+	config->timerConfig = dcmotorTimerConfig;
+	config->clk.GPIOx = L293D_CLK_GPIO_Port;
+	config->clk.GPIO_Pin = L293D_CLK_Pin;
+	config->enable.GPIOx = L293D_EN_GPIO_Port;
+	config->enable.GPIO_Pin = L293D_EN_Pin;
+	config->latch.GPIOx = L293D_LATCH_GPIO_Port;
+	config->latch.GPIO_Pin = L293D_LATCH_Pin;
+	config->data.GPIOx = L293D_SER_GPIO_Port;
+	config->data.GPIO_Pin = L293D_SER_Pin;
 }
 /* USER CODE END 4 */
 
