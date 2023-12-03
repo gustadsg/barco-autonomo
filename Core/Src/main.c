@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "SERVO.h"
 #include "DCMOTOR.h"
+#include "HMC5883L.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -75,6 +76,8 @@ static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void servoConfigFactory(SERVO_Config_t *config);
 void dcMotorConfigFactory(DCMOTOR_Config_t *config);
+void magnetometerConfigFactory(HMC5883L_Config_t *config);
+void startInitialState(DCMOTOR_Config_t dcMotorConfig, SERVO_Config_t servoConfig);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -121,30 +124,46 @@ int main(void)
 
 	DCMOTOR_Config_t dcMotorConfig;
 	dcMotorConfigFactory(&dcMotorConfig);
+
+	HMC5883L_Config_t magnetometerConfig;
+	magnetometerConfigFactory(&magnetometerConfig);
+
+
+
+	HAL_Delay(5000);
+
+	HMC5883L_Init(magnetometerConfig);
+	HMC5883L_GetCalibrationData(magnetometerConfig, &huart2);
+	HMC5883L_Data_t data;
+	data.x = 0;
+	data.y = 0;
+	data.z = 0;
+	data.degrees = 0;
+	data.radians = 0;
+
+	startInitialState(dcMotorConfig, servoConfig);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	DCMOTOR_SetDirection(dcMotorConfig, FORWARD);
 
-	DCMOTOR_SetSpeedPercentage(dcMotorConfig, 100);
-	HAL_Delay(FIRST_STATE_MS);
 	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		SERVO_SetAngle(servoConfig, -90);
-		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 0);
-		HAL_Delay(5000);
-
-		//SERVO_SetAngle(servoConfig, 0);
-		//DCMOTOR_SetSpeedPercentage(dcMotorConfig, 50);
-		//HAL_Delay(5000);
-
-		SERVO_SetAngle(servoConfig, 90);
-		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 100);
-
-		HAL_Delay(5000);
+//		HMC5883L_Read(magnetometerConfig, &data);
+//		SERVO_SetAngle(servoConfig, -data.degrees);
+//		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 0);
+		HAL_Delay(2000);
+//
+//		//SERVO_SetAngle(servoConfig, 0);
+//		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 10);
+//		//HAL_Delay(5000);
+//
+//		SERVO_SetAngle(servoConfig, 90);
+//		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 100);
+//
+//		HAL_Delay(5000);
 	}
   /* USER CODE END 3 */
 }
@@ -471,6 +490,34 @@ void dcMotorConfigFactory(DCMOTOR_Config_t* config) {
 	config->latch.GPIO_Pin = L293D_LATCH_Pin;
 	config->data.GPIOx = L293D_SER_GPIO_Port;
 	config->data.GPIO_Pin = L293D_SER_Pin;
+}
+
+void magnetometerConfigFactory(HMC5883L_Config_t *config) {
+	config->dataOutputRate = HMC5883L_DOR_15;
+	config->gain = HMC5883L_GAIN_8_1;
+	config->measurementMode = HMC5883L_MESUAREMENT_NORMAL;
+	config->operatingMode = HMC5883L_CONTINUOUS_MODE;
+	config->samplesNum = HMC5883L_SAMPLES_8;
+	config->handle = &hi2c1;
+
+	config->calibration.x_offset = 0;
+	config->calibration.y_offset = 0;
+	config->calibration.z_offset = 0; // don't care, only xy plane is relevant for boat navigation
+}
+
+/**
+ * The trajectory begins with 10s of motor pwm 100% on and with middle servo position.
+ */
+void startInitialState(DCMOTOR_Config_t dcMotorConfig, SERVO_Config_t servoConfig) {
+	int dcMotorInitialSpeed = 100;
+
+	//DCMOTOR_SetDirection(dcMotorConfig, FORWARD);
+	DCMOTOR_SetSpeedPercentage(dcMotorConfig, 0);
+
+	float servoInitialAngle = (float) SERVO_MIDDLE_ANGLE;
+	SERVO_SetAngle(servoConfig, servoInitialAngle);
+
+	HAL_Delay(FIRST_STATE_MS);
 }
 /* USER CODE END 4 */
 
