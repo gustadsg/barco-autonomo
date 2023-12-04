@@ -8,6 +8,10 @@
 #include "HMC5883L.h"
 
 HAL_StatusTypeDef HMC5883L_Init(HMC5883L_Config_t config) {
+	HAL_StatusTypeDef status;
+	status = __HMC583L_VerifyIdentity(config);
+	if(status!=HAL_OK) return status;
+
 	uint8_t registerA = HMC5883L_REG_BIT_CRA7;
 	registerA <<= 2;
 	registerA |= config.samplesNum;
@@ -23,8 +27,6 @@ HAL_StatusTypeDef HMC5883L_Init(HMC5883L_Config_t config) {
 	registerMode |= config.operatingMode;
 	HAL_Delay(__HMC5883L_MODE_STABILIZATION_TIME_MS);
 
-	HAL_StatusTypeDef status;
-
 	status = HAL_I2C_Mem_Write(config.handle, HMC5883L_DEVICE_ADDR, HMC5883L_REG_ADDR_A, I2C_MEMADD_SIZE_8BIT, &registerA, HMC5883L_BYTE_SZ, HAL_MAX_DELAY);
 	if(status != HAL_OK) return status;
 
@@ -33,6 +35,29 @@ HAL_StatusTypeDef HMC5883L_Init(HMC5883L_Config_t config) {
 
 	status = HAL_I2C_Mem_Write(config.handle, HMC5883L_DEVICE_ADDR, HMC5883L_REG_ADDR_MODE, I2C_MEMADD_SIZE_8BIT, &registerMode, HMC5883L_BYTE_SZ, HAL_MAX_DELAY);
 	return status;
+}
+
+HAL_StatusTypeDef __HMC583L_VerifyIdentity(HMC5883L_Config_t config) {
+	uint8_t idRegContent;
+
+	HAL_StatusTypeDef status;
+
+	// IDENTIFICATION REGISTER A
+	status = HAL_I2C_Mem_Read(config.handle, HMC5883L_DEVICE_ADDR, HMC5883L_REG_ADDR_ID_A, I2C_MEMADD_SIZE_8BIT, &idRegContent, HMC5883L_BYTE_SZ, HAL_MAX_DELAY);
+	if(status != HAL_OK) return status;
+	if(idRegContent != HMC5883L_ID_A_EXPECTED) return HAL_ERROR;
+
+	// IDENTIFICATION REGISTER B
+	status = HAL_I2C_Mem_Read(config.handle, HMC5883L_DEVICE_ADDR, HMC5883L_REG_ADDR_ID_B, I2C_MEMADD_SIZE_8BIT, &idRegContent, HMC5883L_BYTE_SZ, HAL_MAX_DELAY);
+	if(status != HAL_OK) return status;
+	if(idRegContent != HMC5883L_ID_B_EXPECTED) return HAL_ERROR;
+
+	// IDENTIFICATION REGISTER C
+	status = HAL_I2C_Mem_Read(config.handle, HMC5883L_DEVICE_ADDR, HMC5883L_REG_ADDR_ID_C, I2C_MEMADD_SIZE_8BIT, &idRegContent, HMC5883L_BYTE_SZ, HAL_MAX_DELAY);
+	if(status != HAL_OK) return status;
+	if(idRegContent != HMC5883L_ID_C_EXPECTED) return HAL_ERROR;
+
+	return HAL_OK;
 }
 
 HAL_StatusTypeDef HMC5883L_Read(HMC5883L_Config_t config, HMC5883L_Data_t *data) {

@@ -57,6 +57,11 @@
 #define HMC5883L_REG_ADDR_ID_B 0x0B
 #define HMC5883L_REG_ADDR_ID_C 0x0C
 
+// IDENTIFICATION REGISTERS EXPECTED VALUES
+#define HMC5883L_ID_A_EXPECTED 0b01001000
+#define HMC5883L_ID_B_EXPECTED 0b00110100
+#define HMC5883L_ID_C_EXPECTED 0b00110011
+
 #define HMC5883L_DEVICE_ADDR 0x1E << 1
 
 #define HMC5883L_BYTE_SZ 1
@@ -145,5 +150,6 @@ void HMC5883L_GetCalibrationData(HMC5883L_Config_t config, UART_HandleTypeDef *h
 HAL_StatusTypeDef __HMC5883L_SetDataAxis(HMC5883L_Data_t *data, uint8_t axis, int16_t axisData);
 HAL_StatusTypeDef __HMC5883L_GetStatus(HMC5883L_Config_t config, HMC5883L_Status_t *status);
 void __HMC5883L_SetDataAngles(HMC5883L_Data_t *data);
+HAL_StatusTypeDef __HMC583L_VerifyIdentity(HMC5883L_Config_t config);
 
 #endif /* INC_HMC5883L_H_ */

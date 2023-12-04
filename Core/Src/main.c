@@ -494,15 +494,16 @@ void dcMotorConfigFactory(DCMOTOR_Config_t* config) {
 
 void magnetometerConfigFactory(HMC5883L_Config_t *config) {
 	config->dataOutputRate = HMC5883L_DOR_15;
-	config->gain = HMC5883L_GAIN_8_1;
+	config->gain = HMC5883L_GAIN_0_88;
 	config->measurementMode = HMC5883L_MESUAREMENT_NORMAL;
 	config->operatingMode = HMC5883L_CONTINUOUS_MODE;
 	config->samplesNum = HMC5883L_SAMPLES_8;
 	config->handle = &hi2c1;
 
-	config->calibration.x_offset = 0;
-	config->calibration.y_offset = 0;
-	config->calibration.z_offset = 0; // don't care, only xy plane is relevant for boat navigation
+	// Final axis data = read - offset
+	config->calibration.x_offset = -5000;
+	config->calibration.y_offset = -5000;
+	config->calibration.z_offset = -5000; // don't care, only xy plane is relevant for boat navigation
 }
 
 /**
