@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "SERVO.h"
 #include "DCMOTOR.h"
+#include "JDY18.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -116,34 +117,32 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-	SERVO_Config_t servoConfig;
-	servoConfigFactory(&servoConfig);
+//	SERVO_Config_t servoConfig;
+//	servoConfigFactory(&servoConfig);
+//
+//	DCMOTOR_Config_t dcMotorConfig;
+//	dcMotorConfigFactory(&dcMotorConfig);
 
-	DCMOTOR_Config_t dcMotorConfig;
-	dcMotorConfigFactory(&dcMotorConfig);
+	JDY18_Device_t devices[JDY18_MAX_DEVICES];
+	JDY18_Setup(&huart3);
+	JDY18_SetBaudRate(JDY18_Baud_9600);
+	JDY18_SetRole(JDY18_ROLE_MASTER);
+	JDY18_Scan(devices);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	DCMOTOR_SetDirection(dcMotorConfig, FORWARD);
-
-	DCMOTOR_SetSpeedPercentage(dcMotorConfig, 100);
 	HAL_Delay(FIRST_STATE_MS);
 	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		SERVO_SetAngle(servoConfig, -90);
-		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 0);
-		HAL_Delay(5000);
 
 		//SERVO_SetAngle(servoConfig, 0);
 		//DCMOTOR_SetSpeedPercentage(dcMotorConfig, 50);
 		//HAL_Delay(5000);
 
-		SERVO_SetAngle(servoConfig, 90);
-		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 100);
-
+		JDY18_Scan(devices);
 		HAL_Delay(5000);
 	}
   /* USER CODE END 3 */

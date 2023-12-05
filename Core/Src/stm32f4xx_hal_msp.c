@@ -300,24 +300,16 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     __HAL_RCC_USART3_CLK_ENABLE();
 
     __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
     /**USART3 GPIO Configuration
     PC5     ------> USART3_RX
-    PB10     ------> USART3_TX
+    PC10     ------> USART3_TX
     */
-    GPIO_InitStruct.Pin = BLE_RX_Pin;
+    GPIO_InitStruct.Pin = BLE_RX_Pin|BLE_TX_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
-    HAL_GPIO_Init(BLE_RX_GPIO_Port, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = BLE_TX_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
-    HAL_GPIO_Init(BLE_TX_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /* USER CODE BEGIN USART3_MspInit 1 */
 
@@ -362,11 +354,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 
     /**USART3 GPIO Configuration
     PC5     ------> USART3_RX
-    PB10     ------> USART3_TX
+    PC10     ------> USART3_TX
     */
-    HAL_GPIO_DeInit(BLE_RX_GPIO_Port, BLE_RX_Pin);
-
-    HAL_GPIO_DeInit(BLE_TX_GPIO_Port, BLE_TX_Pin);
+    HAL_GPIO_DeInit(GPIOC, BLE_RX_Pin|BLE_TX_Pin);
 
   /* USER CODE BEGIN USART3_MspDeInit 1 */
 
