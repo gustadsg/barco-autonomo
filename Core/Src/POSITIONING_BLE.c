@@ -97,5 +97,6 @@ float POSITIONING_BLE_CalculateDesiredAngleSetpoint(POSITIONING_BLE_Cartesian_Po
         if(deltay<0) return 270+gamma;
     }
 
-    return theta;
+    // boat angle goes from -180 to 180. Convert scale from 0~360 to -180~180
+    return theta>180 ? theta-360 : theta;
 }
