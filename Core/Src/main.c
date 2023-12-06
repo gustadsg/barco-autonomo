@@ -133,7 +133,7 @@ int main(void)
 	HAL_Delay(5000);
 
 	HMC5883L_Init(magnetometerConfig);
-	HMC5883L_GetCalibrationData(magnetometerConfig, &huart2);
+	//HMC5883L_GetCalibrationData(magnetometerConfig, &huart2);
 	HMC5883L_Data_t data;
 	data.x = 0;
 	data.y = 0;
@@ -151,10 +151,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//		HMC5883L_Read(magnetometerConfig, &data);
-//		SERVO_SetAngle(servoConfig, -data.degrees);
+		HMC5883L_Read(magnetometerConfig, &data);
+		SERVO_SetAngle(servoConfig, -data.degrees);
 //		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 0);
-		HAL_Delay(2000);
+		HAL_Delay(500);
 //
 //		//SERVO_SetAngle(servoConfig, 0);
 //		DCMOTOR_SetSpeedPercentage(dcMotorConfig, 10);
@@ -501,9 +501,9 @@ void magnetometerConfigFactory(HMC5883L_Config_t *config) {
 	config->handle = &hi2c1;
 
 	// Final axis data = read - offset
-	config->calibration.x_offset = -5000;
-	config->calibration.y_offset = -5000;
-	config->calibration.z_offset = -5000; // don't care, only xy plane is relevant for boat navigation
+	config->calibration.x_offset = -10.6425;
+	config->calibration.y_offset = -22.8545;
+	config->calibration.z_offset = -71.7215; // don't care, only xy plane is relevant for boat navigation
 }
 
 /**
