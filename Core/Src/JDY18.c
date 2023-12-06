@@ -63,17 +63,33 @@ void JDY18_SetBaudRate(JDY18_BaudRate_t baud) {
 }
 
 int JDY18_Scan(JDY18_Device_t *devices) {
-	char data[JDY18_BUFFER_SZ];
-	memset(data, 0, JDY18_BUFFER_SZ);
+//	char *data = (char *) malloc(JDY18_BUFFER_SZ * sizeof(char));
+//	memset(data, 0, JDY18_BUFFER_SZ);
 
-	JDY18_SendCommand(JDY18_Command_Scan, "");
-	int receivedOk = HAL_UART_Receive(husart, (uint8_t*) data, JDY18_BUFFER_SZ, 1000) == HAL_OK;
+	//JDY18_SendCommand(JDY18_Command_Scan, "");
+
+	HAL_Delay(500);
+
+//	char tempBuffer[1];
+//	HAL_StatusTypeDef readStatus = HAL_OK;
+//	while(!__JDY18_GetScanStrIsComplete(data)) {
+//		readStatus = HAL_UART_Receive(husart, tempBuffer, 1, 200);
+//		strcat(data, tempBuffer);
+//	}
+
+	char *data = "OK\r\n+DEV:1=7FA17C2C055F,-32,PSE2022_B1\r\n+DEV:2=D4680F4C7542,-50,PSE2022_B2\r\n+DEV:3=D4680F4C7572,-50,PSE2022_B3\r\n+DEV:4=583364CA29DE,-82,[LG] webOS TV UJ6565\r\n+STOP:SCAN";
 
 	int numDevices = __JDY18_GetDevicesFromScanStr(data, devices,
 	JDY18_MAX_DEVICES);
 	__JDY18_GetDistanceFromRssi(devices, numDevices);
 
 	return numDevices;
+}
+
+int __JDY18_GetScanStrIsComplete(const char* data) {
+	int containsStopStr = strstr(data, JDY18_START_STR) != NULL;
+	int containsStartStr = strstr(data, JDY18_STOP_STR) != NULL;
+	return containsStopStr && containsStartStr;
 }
 
 void __JDY18_GetDistanceFromRssi(JDY18_Device_t *devices, int8_t numDevices) {

@@ -125,8 +125,9 @@ int main(void)
 
 	JDY18_Device_t devices[JDY18_MAX_DEVICES];
 	JDY18_Setup(&huart3);
-	JDY18_SetBaudRate(JDY18_Baud_9600);
-	JDY18_SetRole(JDY18_ROLE_MASTER);
+//	JDY18_SetRole(JDY18_ROLE_MASTER);
+//	JDY18_SetBaudRate(JDY18_Baud_115200);
+
 	JDY18_Scan(devices);
   /* USER CODE END 2 */
 
@@ -180,7 +181,7 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV8;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
@@ -242,7 +243,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 64-1;
+  htim3.Init.Prescaler = 128-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 1250;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -370,7 +371,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 9600;
+  huart3.Init.BaudRate = 115200;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;

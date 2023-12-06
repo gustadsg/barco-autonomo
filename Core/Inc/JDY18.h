@@ -22,6 +22,9 @@
 #define JDY18_DEFAULT_POWER -69
 #define JDY18_N 2
 
+#define JDY18_START_STR "+DEV"
+#define JDY18_STOP_STR "STOP:SCAN"
+
 typedef enum {
 	JDY18_ROLE_SLAVE = 0, JDY18_ROLE_MASTER = 1, JDY18_ROLE_BEACON = 3,
 } JDY18_Role_t;
@@ -95,6 +98,13 @@ void JDY18_SetBaudRate(JDY18_BaudRate_t baudRate);
  * @return Number of devices found.
  */
 int JDY18_Scan(JDY18_Device_t *devices);
+
+/**
+ * @briefs Verifies if a received string has the requirements to be considered a full scan string.
+ * @param scanStr The string with the scan result.
+ * @return 1 if true, 0 if false.
+ */
+int __JDY18_GetScanStrIsComplete(const char* scanStr);
 
 /**
  * @brief Calculates the distance of a list of devices based on its RSSI values
