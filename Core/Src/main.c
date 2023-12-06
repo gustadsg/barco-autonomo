@@ -24,6 +24,7 @@
 #include "SERVO.h"
 #include "DCMOTOR.h"
 #include "JDY18.h"
+#include "POSITIONING_BLE.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,6 +43,16 @@
 
 // DCMOTOR DEFINITIONS
 #define DCMOTOR_PERIOD 1250;
+
+// POSITIONING DEFINITIONS
+#define DEPART_X 11.495
+#define DEPART_Y 34.342
+
+#define ARRIVAL_X 0
+#define ARRIVAL_Y 0
+
+#define OTHER_X -12.64
+#define OTHER_Y 16.948
 
 // FIRST STATE TIME
 #define FIRST_STATE_MS 10000
@@ -76,6 +87,7 @@ static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void servoConfigFactory(SERVO_Config_t *config);
 void dcMotorConfigFactory(DCMOTOR_Config_t *config);
+void positioningBleConfigFactory(POSITIONING_BLE_Devices_Info_t *devicesInfo);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -117,8 +129,8 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-//	SERVO_Config_t servoConfig;
-//	servoConfigFactory(&servoConfig);
+	SERVO_Config_t servoConfig;
+	servoConfigFactory(&servoConfig);
 //
 //	DCMOTOR_Config_t dcMotorConfig;
 //	dcMotorConfigFactory(&dcMotorConfig);
@@ -129,6 +141,16 @@ int main(void)
 //	JDY18_SetBaudRate(JDY18_Baud_115200);
 
 	JDY18_Scan(devices);
+
+	POSITIONING_BLE_Config_t positiningBleConfig;
+	POSITIONING_BLE_Devices_Info_t devicesInfo;
+	positioningBleConfigFactory(&devicesInfo);
+	POSITIONING_BLE_Cartesian_Point_t currentPosition;
+	currentPosition.x = 0;
+	currentPosition.y = 0;
+
+	POSITIONING_BLE_Cartesian_Point_t targetPoint = {0,0};
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -143,7 +165,13 @@ int main(void)
 		//DCMOTOR_SetSpeedPercentage(dcMotorConfig, 50);
 		//HAL_Delay(5000);
 
-		JDY18_Scan(devices);
+		int num_of_devices = JDY18_Scan(devices);
+		POSITIONING_BLE_CreateConfig(&positiningBleConfig, devicesInfo, devices, num_of_devices);
+		POSITIONING_BLE_Cartesian_Point_t currentPosition = POSITIONING_BLE_GetPosition(&positiningBleConfig);
+		float angleSetpoint = POSITIONING_BLE_CalculateDesiredAngleSetpoint(currentPosition, targetPoint);
+
+		SERVO_SetAngle(servoConfig, -angleSetpoint);
+
 		HAL_Delay(5000);
 	}
   /* USER CODE END 3 */
@@ -471,6 +499,20 @@ void dcMotorConfigFactory(DCMOTOR_Config_t* config) {
 	config->latch.GPIO_Pin = L293D_LATCH_Pin;
 	config->data.GPIOx = L293D_SER_GPIO_Port;
 	config->data.GPIO_Pin = L293D_SER_Pin;
+}
+
+void positioningBleConfigFactory(POSITIONING_BLE_Devices_Info_t *devicesInfo) {
+	strcpy(devicesInfo->departureDevice.name,"PSE2022_B1");
+	devicesInfo->departureDevice.x = DEPART_X;
+	devicesInfo->departureDevice.y = DEPART_Y;
+
+	strcpy(devicesInfo->arrivalDevice.name,"PSE2022_B2");
+	devicesInfo->arrivalDevice.x = ARRIVAL_X;
+	devicesInfo->arrivalDevice.y = ARRIVAL_Y;
+
+	strcpy(devicesInfo->otherDevice.name,"PSE2022_B3");
+	devicesInfo->otherDevice.x = OTHER_X;
+	devicesInfo->otherDevice.y = OTHER_Y;
 }
 /* USER CODE END 4 */
 

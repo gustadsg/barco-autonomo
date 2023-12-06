@@ -65,7 +65,6 @@ void JDY18_SetBaudRate(JDY18_BaudRate_t baud) {
 int JDY18_Scan(JDY18_Device_t *devices) {
 //	char *data = (char *) malloc(JDY18_BUFFER_SZ * sizeof(char));
 //	memset(data, 0, JDY18_BUFFER_SZ);
-
 	//JDY18_SendCommand(JDY18_Command_Scan, "");
 
 	HAL_Delay(500);
@@ -78,6 +77,7 @@ int JDY18_Scan(JDY18_Device_t *devices) {
 //	}
 
 	char *data = "OK\r\n+DEV:1=7FA17C2C055F,-32,PSE2022_B1\r\n+DEV:2=D4680F4C7542,-50,PSE2022_B2\r\n+DEV:3=D4680F4C7572,-50,PSE2022_B3\r\n+DEV:4=583364CA29DE,-82,[LG] webOS TV UJ6565\r\n+STOP:SCAN";
+
 
 	int numDevices = __JDY18_GetDevicesFromScanStr(data, devices,
 	JDY18_MAX_DEVICES);
