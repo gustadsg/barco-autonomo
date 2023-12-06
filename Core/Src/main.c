@@ -25,6 +25,7 @@
 #include "DCMOTOR.h"
 #include "JDY18.h"
 #include "POSITIONING_BLE.h"
+#include "HMC5883L.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,6 +41,14 @@
 #define SERVO_MAX_DUTY_CICLE 0.115;
 #define SERVO_CALIBRATION_GAIN 1.47;
 #define SERVO_CALIBRATION_OFFSET -12.6;
+
+// SERVO CONTROLLER DEFINITIONS
+#define SERVO_CONTROLLER_KP 1
+#define SERVO_CONTROLLER_KI 0.1
+#define SERVO_CONTROLLER_KD 0
+
+// CYCLE PERIOD IN MILLIS
+#define CYCLE_PERIOD_MS 5000
 
 // DCMOTOR DEFINITIONS
 #define DCMOTOR_PERIOD 1250;
@@ -88,6 +97,9 @@ static void MX_TIM3_Init(void);
 void servoConfigFactory(SERVO_Config_t *config);
 void dcMotorConfigFactory(DCMOTOR_Config_t *config);
 void positioningBleConfigFactory(POSITIONING_BLE_Devices_Info_t *devicesInfo);
+void magnetometerConfigFactory(HMC5883L_Config_t *config);
+void servoPidControllerFactory(PID_Controller_t *controller);
+void startInitialState(DCMOTOR_Config_t dcMotorConfig, SERVO_Config_t servoConfig);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -151,28 +163,54 @@ int main(void)
 
 	POSITIONING_BLE_Cartesian_Point_t targetPoint = {0,0};
 
+	DCMOTOR_Config_t dcMotorConfig;
+	dcMotorConfigFactory(&dcMotorConfig);
+
+	HMC5883L_Config_t magnetometerConfig;
+	magnetometerConfigFactory(&magnetometerConfig);
+
+	HMC5883L_Init(magnetometerConfig);
+	//HMC5883L_GetCalibrationData(magnetometerConfig, &huart2);
+	HMC5883L_Data_t data;
+	data.x = 0;
+	data.y = 0;
+	data.z = 0;
+	data.degrees = 0;
+	data.radians = 0;
+
+	PID_Controller_t servoPidController;
+
+	float currentAngle = 0;
+	float angleSetpoint = 0;
+	float angleControlAction = 0;
+	int numBleDevices = 0;
+
+	startInitialState(dcMotorConfig, servoConfig);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	HAL_Delay(FIRST_STATE_MS);
 	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-		//SERVO_SetAngle(servoConfig, 0);
-		//DCMOTOR_SetSpeedPercentage(dcMotorConfig, 50);
-		//HAL_Delay(5000);
-
-		int num_of_devices = JDY18_Scan(devices);
-		POSITIONING_BLE_CreateConfig(&positiningBleConfig, devicesInfo, devices, num_of_devices);
+		// position reading
+		numBleDevices = JDY18_Scan(devices);
+		POSITIONING_BLE_CreateConfig(&positiningBleConfig, devicesInfo, devices, numBleDevices);
 		POSITIONING_BLE_Cartesian_Point_t currentPosition = POSITIONING_BLE_GetPosition(&positiningBleConfig);
-		float angleSetpoint = POSITIONING_BLE_CalculateDesiredAngleSetpoint(currentPosition, targetPoint);
 
-		SERVO_SetAngle(servoConfig, -angleSetpoint);
+		// angle reading
+		angleSetpoint = POSITIONING_BLE_CalculateDesiredAngleSetpoint(currentPosition, targetPoint);
+		HMC5883L_Read(magnetometerConfig, currentAngle);
 
-		HAL_Delay(5000);
+		// angle processing
+		PID_ProcessInput(&servoPidController, currentAngle);
+		angleControlAction = PID_CalculateControlAction(&servoPidController);
+
+		// angle writing
+		SERVO_SetAngle(servoConfig, angleControlAction);
+
+		HAL_Delay(CYCLE_PERIOD_MS);
 	}
   /* USER CODE END 3 */
 }
@@ -513,6 +551,46 @@ void positioningBleConfigFactory(POSITIONING_BLE_Devices_Info_t *devicesInfo) {
 	strcpy(devicesInfo->otherDevice.name,"PSE2022_B3");
 	devicesInfo->otherDevice.x = OTHER_X;
 	devicesInfo->otherDevice.y = OTHER_Y;
+
+void magnetometerConfigFactory(HMC5883L_Config_t *config) {
+	config->dataOutputRate = HMC5883L_DOR_15;
+	config->gain = HMC5883L_GAIN_0_88;
+	config->measurementMode = HMC5883L_MESUAREMENT_NORMAL;
+	config->operatingMode = HMC5883L_CONTINUOUS_MODE;
+	config->samplesNum = HMC5883L_SAMPLES_8;
+	config->handle = &hi2c1;
+
+	// Final axis data = read - offset
+	config->calibration.x_offset = -10.6425;
+	config->calibration.y_offset = -22.8545;
+	config->calibration.z_offset = -71.7215; // don't care, only xy plane is relevant for boat navigation
+}
+
+void servoPidControllerFactory(PID_Controller_t *controller) {
+	float kp = (float) SERVO_CONTROLLER_KP;
+	float ki = (float) SERVO_CONTROLLER_KI;
+	float kd = (float) SERVO_CONTROLLER_KD;
+
+	float servoMax = (float) SERVO_MAX_ANGLE;
+	float servoMin = (float) SERVO_MIN_ANGLE;
+
+	PID_Create(controller, kp, ki, kd, CYCLE_PERIOD_MS);
+	PID_SetSaturationLimits(&controller, servoMin, servoMax);
+}
+
+/**
+ * The trajectory begins with 10s of motor pwm 100% on and with middle servo position.
+ */
+void startInitialState(DCMOTOR_Config_t dcMotorConfig, SERVO_Config_t servoConfig) {
+	int dcMotorInitialSpeed = 100;
+
+	DCMOTOR_SetDirection(dcMotorConfig, FORWARD);
+	DCMOTOR_SetSpeedPercentage(dcMotorConfig, dcMotorInitialSpeed);
+
+	float servoInitialAngle = (float) SERVO_MIDDLE_ANGLE;
+	SERVO_SetAngle(servoConfig, servoInitialAngle);
+
+	HAL_Delay(FIRST_STATE_MS);
 }
 /* USER CODE END 4 */
 
