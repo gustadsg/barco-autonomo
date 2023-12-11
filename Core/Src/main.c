@@ -26,6 +26,7 @@
 #include "JDY18.h"
 #include "POSITIONING_BLE.h"
 #include "HMC5883L.h"
+#include "PID.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,17 +45,17 @@
 
 // SERVO CONTROLLER DEFINITIONS
 #define SERVO_CONTROLLER_KP 1
-#define SERVO_CONTROLLER_KI 0.1
+#define SERVO_CONTROLLER_KI 0
 #define SERVO_CONTROLLER_KD 0
 
 // CYCLE PERIOD IN MILLIS
-#define CYCLE_PERIOD_MS 5000
+#define CYCLE_PERIOD_MS 3000
 
 // DCMOTOR DEFINITIONS
 #define DCMOTOR_PERIOD 1250;
 
 // POSITIONING DEFINITIONS
-#define DEPART_X 11.495
+#define DEPART_X 14.495
 #define DEPART_Y 34.342
 
 #define ARRIVAL_X 0
@@ -64,7 +65,7 @@
 #define OTHER_Y 16.948
 
 // FIRST STATE TIME
-#define FIRST_STATE_MS 10000
+#define FIRST_STATE_MS 23000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -141,6 +142,8 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(20000);
+
 	SERVO_Config_t servoConfig;
 	servoConfigFactory(&servoConfig);
 //
@@ -152,7 +155,7 @@ int main(void)
 //	JDY18_SetRole(JDY18_ROLE_MASTER);
 //	JDY18_SetBaudRate(JDY18_Baud_115200);
 
-	JDY18_Scan(devices);
+//	JDY18_Scan(devices);
 
 	POSITIONING_BLE_Config_t positiningBleConfig;
 	POSITIONING_BLE_Devices_Info_t devicesInfo;
@@ -165,6 +168,7 @@ int main(void)
 
 	DCMOTOR_Config_t dcMotorConfig;
 	dcMotorConfigFactory(&dcMotorConfig);
+    DCMOTOR_SetSpeedPercentage(dcMotorConfig, 0);
 
 	HMC5883L_Config_t magnetometerConfig;
 	magnetometerConfigFactory(&magnetometerConfig);
@@ -180,10 +184,12 @@ int main(void)
 
 	PID_Controller_t servoPidController;
 
+	HMC5883L_Data_t currentAngleData;
 	float currentAngle = 0;
 	float angleSetpoint = 0;
 	float angleControlAction = 0;
 	int numBleDevices = 0;
+	float error = 0;
 
 	startInitialState(dcMotorConfig, servoConfig);
   /* USER CODE END 2 */
@@ -195,17 +201,30 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		// position reading
-		numBleDevices = JDY18_Scan(devices);
-		POSITIONING_BLE_CreateConfig(&positiningBleConfig, devicesInfo, devices, numBleDevices);
-		POSITIONING_BLE_Cartesian_Point_t currentPosition = POSITIONING_BLE_GetPosition(&positiningBleConfig);
+//		numBleDevices = JDY18_Scan(devices);
+//		POSITIONING_BLE_CreateConfig(&positiningBleConfig, devicesInfo, devices, numBleDevices);
+//		POSITIONING_BLE_Cartesian_Point_t currentPosition = POSITIONING_BLE_GetPosition(&positiningBleConfig);
 
+		currentPosition.x = 14.75;
+		currentPosition.y = 33.11;
 		// angle reading
 		angleSetpoint = POSITIONING_BLE_CalculateDesiredAngleSetpoint(currentPosition, targetPoint);
-		HMC5883L_Read(magnetometerConfig, currentAngle);
+
+		HMC5883L_Read(magnetometerConfig, &currentAngleData);
+		currentAngle = currentAngleData.degrees;
 
 		// angle processing
-		PID_ProcessInput(&servoPidController, currentAngle);
-		angleControlAction = PID_CalculateControlAction(&servoPidController);
+//		PID_SetSetpoint(&servoPidController, angleSetpoint);
+//		PID_ProcessInput(&servoPidController, currentAngle);
+//		angleControlAction = PID_CalculateControlAction(&servoPidController);
+
+		if(currentAngle < 0) currentAngle+=360;
+		error = angleSetpoint - currentAngle;
+
+//		if(error<-90) error=-90;
+//		if(error>90) error = 90;
+
+		angleControlAction = error;
 
 		// angle writing
 		SERVO_SetAngle(servoConfig, angleControlAction);
@@ -247,7 +266,7 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV8;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
@@ -551,6 +570,7 @@ void positioningBleConfigFactory(POSITIONING_BLE_Devices_Info_t *devicesInfo) {
 	strcpy(devicesInfo->otherDevice.name,"PSE2022_B3");
 	devicesInfo->otherDevice.x = OTHER_X;
 	devicesInfo->otherDevice.y = OTHER_Y;
+}
 
 void magnetometerConfigFactory(HMC5883L_Config_t *config) {
 	config->dataOutputRate = HMC5883L_DOR_15;
@@ -575,7 +595,7 @@ void servoPidControllerFactory(PID_Controller_t *controller) {
 	float servoMin = (float) SERVO_MIN_ANGLE;
 
 	PID_Create(controller, kp, ki, kd, CYCLE_PERIOD_MS);
-	PID_SetSaturationLimits(&controller, servoMin, servoMax);
+	PID_SetSaturationLimits(controller, servoMin, servoMax);
 }
 
 /**
